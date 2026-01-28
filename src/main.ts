@@ -1,3 +1,4 @@
+// src/main.ts
 import { NestFactory } from '@nestjs/core';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
@@ -5,30 +6,33 @@ import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
 import { HttpMetaInterceptor } from './interceptors/http-meta-interceptor.service.interceptor';
 import { globalPrefix, swaggerInfo, version } from './informations';
-import { writeFileSync } from 'fs';
-import * as yaml from 'js-yaml';
 
+/**
+ * Initializes and starts the NestJS application.
+ */
 async function bootstrap() {
+  // Wir erstellen die NestJS-Anwendung basierend auf dem App-Modul.
   const app = await NestFactory.create(AppModule);
 
   const configService = app.get(ConfigService);
 
-  // Debugging JWT_SECRET
-  Logger.debug(`Current working directory: ${process.cwd()}`, 'Bootstrap');
-  Logger.debug(`JWT_SECRET from ConfigService: ${configService.get<string>('JWT_SECRET')}`, 'Bootstrap');
-
+  // Wir lesen den Port aus den Umgebungsvariablen aus, standardmäßig verwenden wir Port 3000.
   const port = configService.get<number>('PORT') || 3000;
 
+  // interceptor statt middleware
   app.useGlobalInterceptors(new HttpMetaInterceptor());
 
+  // globalPipes
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
     }),
   );
 
+  // globalPrefix
   app.setGlobalPrefix(globalPrefix);
 
+  // openApi setup
   const config = new DocumentBuilder()
     .setTitle(swaggerInfo.title)
     .setDescription(swaggerInfo.description)
@@ -44,14 +48,13 @@ async function bootstrap() {
 
   SwaggerModule.setup(swaggerInfo.docPath, app, document);
 
-  const yamlDocument: string = yaml.dump(document);
-  writeFileSync('./swagger.yaml', yamlDocument);
-
+  // Wir lassen die Anwendung auf dem definierten Port lauschen.
   await app.listen(port);
 
+  // Wir verwenden den nestjs Logger, um eine Startmeldung auszugeben.
   Logger.log(`NEST application successfully started`, bootstrap.name);
   Logger.debug(
-    `Server in version: ${swaggerInfo.docPath} ist jetzt erreichbar unter http://localhost:${port}/${globalPrefix}`,
+    `Server in version: ${version} ist jetzt erreichbar unter http://localhost:${port}/${globalPrefix}`,
     bootstrap.name,
   );
   Logger.debug(

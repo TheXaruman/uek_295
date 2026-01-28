@@ -1,29 +1,34 @@
+// src/app.module.ts
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
-import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { User } from './user/entities/user.entity';
-import { UserModule } from './user/user.module';
-import { AuthModule } from './auth/auth.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { TodoModule } from './modules/todo/todo.module';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { join } from 'path';
 
+/**
+ * AppModule is the root module of the application.
+ * It is responsible for importing and configuring other modules.
+ */
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, envFilePath: join(__dirname, '..', '.env') }),
+    // wichtig, wenn wir .env verwenden
+    ConfigModule.forRoot({
+      isGlobal: true, // wichtig, damit überall verfügbar
+      envFilePath: join(__dirname, '..', '.env'),
+    }),
+    // datenbank initialisieren. Wir verwenden sqlite
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
+        autoLoadEntities: true,
+        synchronize: true, // !! Wichtig: Nur für Entwicklungszwecke aktivieren
         type: 'sqlite',
         database: configService.get<string>('DB_DATABASE', 'data/todo.db'),
-        entities: [User],
-        synchronize: true,
       }),
     }),
-    UserModule,
     AuthModule,
+    TodoModule,
   ],
-  controllers: [AppController],
-  providers: [AppService],
 })
 export class AppModule {}

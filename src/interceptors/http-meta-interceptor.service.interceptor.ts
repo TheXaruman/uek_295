@@ -1,59 +1,54 @@
-// src/interceptors/http-meta-interceptor.service.interceptor.ts
 import {
-  CallHandler,
-  ExecutionContext,
   Injectable,
-  Logger,
   NestInterceptor,
+  ExecutionContext,
+  CallHandler,
+  Logger,
 } from '@nestjs/common';
-import { Request, Response } from 'express';
-import { v4 as uuid } from 'uuid';
-import { Observable, tap } from 'rxjs';
+import { Response } from 'express';
+import { finalize, Observable } from 'rxjs';
+import { randomInt } from 'node:crypto';
+import { CorrelationIdRequest } from '../decorators/correlation-id-request';
 
 /**
- * An interceptor that logs incoming requests and outgoing responses.
- *
- * This interceptor assigns a unique correlation ID to each request and logs
- * important information such as the request method, URL, execution time,
- * and response status. This helps in tracing and debugging requests
- * throughout the application.
+ * HttpMetaInterceptor is a NestJS interceptor that enhances HTTP metadata for requests and responses.
+ * It adds a correlation ID and response time headers to the HTTP response and logs the request details.
  */
 @Injectable()
 export class HttpMetaInterceptor implements NestInterceptor {
-  /**
-   * The logger instance for this interceptor.
-   *
-   * We use the NestJS `Logger` to ensure that our log messages are
-   * formatted and output consistently with the rest of the application.
-   */
-  private readonly logger = new Logger(HttpMetaInterceptor.name);
+  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+    // Zugriff auf HTTP Response
+    const http = context.switchToHttp();
+    const req = http.getRequest<CorrelationIdRequest>();
+    const res = http.getResponse<Response>();
 
-  /**
-   * Intercepts the request-response cycle to add logging.
-   *
-   * @param context The execution context of the current request.
-   * @param next A handler for the next step in the request pipeline.
-   * @returns An observable that resolves to the response.
-   */
-  intercept(
-    context: ExecutionContext,
-    next: CallHandler<any>,
-  ): Observable<any> | Promise<Observable<any>> {
-    const id = uuid();
-    const req = context.switchToHttp().getRequest<Request>();
-    const res = context.switchToHttp().getResponse<Response>();
-    const { method, url } = req;
-    const now = Date.now();
+    // 1) Correlation ID holen oder generieren
+    const headerCorrId = req.header('x-correlation-id');
 
-    this.logger.log(`[${id}] ${method} ${url} - Request received`);
+    // 2) Für @CorrId() verfügbar machen
+    const correlationId =
+      (headerCorrId ? parseInt(headerCorrId?.trim(), 10) : null) ||
+      randomInt(10000, 99999);
+    req.correlationId = correlationId;
+
+    Logger.log(
+      `${req.correlationId} ${req.method} ${req.url} from ${req.ip}`,
+      HttpMetaInterceptor.name,
+    );
+
+    // Hochauflösender Start-Zeitpunkt
+    const start = process.hrtime.bigint();
 
     return next.handle().pipe(
-      tap(() => {
-        const { statusCode } = res;
-        const duration = Date.now() - now;
-        this.logger.log(
-          `[${id}] ${method} ${url} - Response sent with status ${statusCode} in ${duration}ms`,
-        );
+      finalize(() => {
+        const durationNs = process.hrtime.bigint() - start;
+        const durationMs = Number(durationNs) / 1_000_000;
+
+        // Correlation ID im Response Header zurückgeben
+        res.setHeader('X-Correlation-Id', correlationId);
+
+        // Header setzen (vor dem Senden der Response)
+        res.setHeader('X-Response-Time', `${durationMs.toFixed(2)}ms`);
       }),
     );
   }
