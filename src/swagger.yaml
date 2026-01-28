@@ -1,0 +1,148 @@
+openapi: 3.0.0
+paths:
+  /api:
+    get:
+      operationId: AppController_getHello
+      parameters: []
+      responses:
+        '200':
+          description: ''
+      tags:
+        - App
+  /api/user/profile:
+    get:
+      operationId: UserController_getProfile
+      parameters: []
+      responses:
+        '200':
+          description: The profile of the authenticated user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+      security: &ref_0
+        - bearer: []
+      summary: Get the profile of the authenticated user
+      tags: &ref_1
+        - user
+  /api/user:
+    post:
+      operationId: UserController_create
+      parameters: []
+      responses:
+        '201':
+          description: The user has been successfully created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+      security: *ref_0
+      summary: Create a new user (Admin only)
+      tags: *ref_1
+    get:
+      operationId: UserController_findAll
+      parameters: []
+      responses:
+        '200':
+          description: A list of all users.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+      security: *ref_0
+      summary: Get all users (Admin only)
+      tags: *ref_1
+  /api/user/{id}:
+    get:
+      operationId: UserController_findOne
+      parameters: []
+      responses:
+        '200':
+          description: The user with the specified ID.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+      security: *ref_0
+      summary: Get a user by ID (Admin only)
+      tags: *ref_1
+    patch:
+      operationId: UserController_update
+      parameters: []
+      responses:
+        '200':
+          description: The updated user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+      security: *ref_0
+      summary: Update a user by ID (Admin only)
+      tags: *ref_1
+    delete:
+      operationId: UserController_remove
+      parameters: []
+      responses:
+        '200':
+          description: The user has been successfully deleted.
+      security: *ref_0
+      summary: Delete a user by ID (Admin only)
+      tags: *ref_1
+  /api/auth/register:
+    post:
+      operationId: AuthController_register
+      parameters: []
+      responses:
+        '201':
+          description: The user has been successfully created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+      summary: Register a new user
+      tags: &ref_2
+        - auth
+  /api/auth/login:
+    post:
+      operationId: AuthController_login
+      parameters: []
+      responses:
+        '200':
+          description: The user has been successfully logged in.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginDto'
+      summary: Log in a user
+      tags: *ref_2
+info:
+  title: Todo API von Alwin Litscher
+  description: Ein API zur Verwaltung von Todo items
+  version: '1.0'
+  contact:
+    name: Alwin Litscher
+    url: https://www.example.com
+    email: alwin.litscher@example.com
+tags: []
+servers: []
+components:
+  securitySchemes:
+    bearer:
+      scheme: bearer
+      bearerFormat: JWT
+      type: http
+  schemas:
+    User:
+      type: object
+      properties: {}
+    LoginDto:
+      type: object
+      properties:
+        access_token:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+          description: The access token for the authenticated user.
+      required:
+        - access_token
